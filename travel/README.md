@@ -34,6 +34,8 @@ Both definitions carry the same standing rules, which is the entire point of the
 - **Budget triage.** Briefs carry a search budget and ranked priorities; spend top-down and report partial rather than shallow.
 - **Both currencies, always**, all-in rather than headline.
 - **Names and addresses returned verbatim**, so the orchestrator's verification pass can resolve them. A paraphrased venue name cannot be checked and gets dropped.
+- **Gather, don't compute.** Neither agent has a shell, so multi-year statistics, percentiles, event frequencies and itinerary-wide break-evens are the orchestrator's job. Agents return **where the raw series lives** — endpoint, parameters, coverage — rather than an estimate eyeballed from a handful of values.
+- **A calendar range is not a price**, and a monthly summary is not an answer to a question about specific dates. Both get returned as what they are, or marked `UNVERIFIED for dates`.
 
 ### Why this lives in the agent, not the prompt
 
@@ -71,9 +73,13 @@ Four are country-agnostic. Destination-specific ones (national transit programme
 | **Geoapify** *or* **LocationIQ** | Geocoding at ~thousands/day instead of ~1/sec | Yes | None meaningful |
 | **Sherpa** | Entry and visa requirements as structured data | Developer tier, on request | Cross-check only — never the authority over a government page |
 
-### The agents never hold a key
+### The agents never hold a key — or do arithmetic
 
 **The orchestrator makes every keyed call and passes results down.** Agents have no shell and no credentials, which is deliberate: a key passed into a subagent prompt lands in the session transcript, and there is no reason to put it there when the orchestrator can call on their behalf.
+
+**The same boundary covers computation**, for a plainer reason: without a shell an agent *cannot* aggregate two hundred records into a percentile. The best it can do is find a page where somebody else already did — which is a worse answer, because a published summary is binned to the publisher's convenience rather than the trip's. On the run that produced this rule, monthly climate normals were **2.4–3.2 °C off** the actual travel dates across three cities; the correct figures came from computing over daily records for the exact window, and no amount of better searching would have found them.
+
+So agents identify sources and the orchestrator derives numbers. That split also means a derived figure always ships with its method attached, which a scraped one never does.
 
 This runs in two phases, and the second is the more valuable one:
 
@@ -82,6 +88,8 @@ This runs in two phases, and the second is the more valuable one:
 **After return — verify what the agents found.** A restaurant discovered mid-research can't be pre-fetched, so it gets checked at synthesis: geocode every coordinate, run `business_status` on every venue, confirm hours and closure days. Doing it here rather than inside each agent is better on two counts — one consistent standard instead of twelve, and it is **the point where a fabricated row actually gets caught**, because a venue name that won't resolve is the tell.
 
 The agents are briefed to cooperate with this: return names and addresses **exactly as the source gives them** so a lookup can resolve them, and never invent a coordinate or an opening time, since those are precisely the fields that get machine-checked.
+
+**One caveat the geocoding results carry**: a lookup resolves to the nearest point the dataset holds, which may not represent the destination. Check what came back — the matched name, the distance from what was asked, and the **elevation**. A gridded weather cell at 110 m standing in for places at 723–1,040 m understates the cold by several degrees, and nothing in the response flags it.
 
 ### Setup
 
@@ -133,6 +141,9 @@ The model comes from the definition — don't pass `model` on the call.
 - **Cap concurrency at 4–6 agents.** The `WebSearch` budget is *shared across sibling agents*, and so is the session limit. A seventeen-agent fan-out exhausted the shared pool in about four minutes and lost fourteen of them. Dispatch in waves.
 - **Give every brief an explicit search budget and a numbered priority list.** Agents respect a stated cap and invent their own when none is given.
 - **Name the facts each agent owns**, where two tracks might both touch one. Without that, both research it shallowly and neither resolves it.
+- **Tell each agent where its findings land.** A track with no named destination in the finished document is a track whose output gets compressed into a paragraph at synthesis. Watch the cross-cutting ones especially — a track that feeds verdicts inside other sections rather than owning a section of its own can return nothing without anything looking thin.
+- **Ask for sources, not statistics.** If you need a multi-year figure, ask the agent where the series lives and compute it yourself. Asking an agent for the number invites an estimate that looks identical to a real one.
+- **Don't trust a single value pulled from a dense table.** Fetching runs a small model over the page, and one cell out of a large statistical grid — worse in an unfamiliar script — is where it's least reliable. Three passes over one authority's tables returned three different values. Ask for the surrounding rows so the mapping is visible, and check relations that must hold.
 - **Expect `UNVERIFIED` cells and don't treat them as failure.** They mark where a source was blocked, which is information the reader needs.
 
 ## Related
