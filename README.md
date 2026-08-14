@@ -18,7 +18,7 @@ agents/
 
 ## What's here
 
-**[`travel/`](travel/)** — a matched pair of live-research agents. `travel-researcher` takes the tracks where fine print costs money or causes trouble (flights, lodging, entry and health, law, points, fare rules, food); `travel-scout` takes the retrieval-shaped ones (ground transport, experiences, community sentiment, language). Both carry a strict anti-fabrication protocol, a blocked-source ladder, an API-first source list, and budget-triage rules.
+**[`travel/`](travel/)** — a matched pair of live-research agents. `travel-researcher` takes the tracks where fine print costs money or causes trouble (flights, lodging, entry and health, law, points, fare rules, food); `travel-scout` takes the retrieval-shaped ones (ground transport, experiences, community sentiment, language). Both carry a strict anti-fabrication protocol, a blocked-source ladder, an API-first source list, budget-triage rules, and a **gather-don't-compute boundary** — neither holds a credential or does arithmetic, so keys stay out of transcripts and derived figures always ship with their method.
 
 > **These two agents are required by the [`travel-agent` skill](https://github.com/wrobelsec/agent-skills-claude).** The skill dispatches them by name and will not work without them installed. See [`travel/README.md`](travel/README.md).
 
